@@ -1625,10 +1625,13 @@
 	 * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
 	 */
 	function isIndex(value, length) {
+	  var type = typeof value;
 	  length = length == null ? MAX_SAFE_INTEGER : length;
+
 	  return !!length &&
-	    (typeof value == 'number' || reIsUint.test(value)) &&
-	    (value > -1 && value % 1 == 0 && value < length);
+	    (type == 'number' ||
+	      (type != 'symbol' && reIsUint.test(value))) &&
+	        (value > -1 && value % 1 == 0 && value < length);
 	}
 
 	var _isIndex = isIndex;
@@ -1757,6 +1760,14 @@
 	/** Used to access faster Node.js helpers. */
 	var nodeUtil = (function() {
 	  try {
+	    // Use `util.types` for Node.js 10+.
+	    var types = freeModule && freeModule.require && freeModule.require('util').types;
+
+	    if (types) {
+	      return types;
+	    }
+
+	    // Legacy `process.binding('util')` for Node.js < 10.
 	    return freeProcess && freeProcess.binding && freeProcess.binding('util');
 	  } catch (e) {}
 	}());
@@ -2525,7 +2536,6 @@
 	var _memoizeCapped = memoizeCapped;
 
 	/** Used to match property names within property paths. */
-	var reLeadingDot = /^\./;
 	var rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
 
 	/** Used to match backslashes in property paths. */
@@ -2540,11 +2550,11 @@
 	 */
 	var stringToPath = _memoizeCapped(function(string) {
 	  var result = [];
-	  if (reLeadingDot.test(string)) {
+	  if (string.charCodeAt(0) === 46 /* . */) {
 	    result.push('');
 	  }
-	  string.replace(rePropName, function(match, number, quote, string) {
-	    result.push(quote ? string.replace(reEscapeChar, '$1') : (number || match));
+	  string.replace(rePropName, function(match, number, quote, subString) {
+	    result.push(quote ? subString.replace(reEscapeChar, '$1') : (number || match));
 	  });
 	  return result;
 	});
@@ -3571,9 +3581,9 @@
 
 	}
 
-	var fragmentShader = {"text":"uniform vec3 u_color;\r\nuniform float u_metallic;\r\nuniform float u_roughness;\r\nuniform vec3 u_light0Pos;\r\nuniform vec3 u_light0Color;\r\nuniform vec3 u_light1Pos;\r\nuniform vec3 u_light1Color;\r\nuniform mat4 u_modelMatrix;\r\nuniform sampler2D u_reflectionCube;\r\nuniform sampler2D u_reflectionCubeBlur;","base64":"data:text/plain;base64,dW5pZm9ybSB2ZWMzIHVfY29sb3I7DQp1bmlmb3JtIGZsb2F0IHVfbWV0YWxsaWM7DQp1bmlmb3JtIGZsb2F0IHVfcm91Z2huZXNzOw0KdW5pZm9ybSB2ZWMzIHVfbGlnaHQwUG9zOw0KdW5pZm9ybSB2ZWMzIHVfbGlnaHQwQ29sb3I7DQp1bmlmb3JtIHZlYzMgdV9saWdodDFQb3M7DQp1bmlmb3JtIHZlYzMgdV9saWdodDFDb2xvcjsNCnVuaWZvcm0gbWF0NCB1X21vZGVsTWF0cml4Ow0KdW5pZm9ybSBzYW1wbGVyMkQgdV9yZWZsZWN0aW9uQ3ViZTsNCnVuaWZvcm0gc2FtcGxlcjJEIHVfcmVmbGVjdGlvbkN1YmVCbHVyOw=="};
+	var fragmentShader = {"text":"uniform vec3 u_color;\nuniform float u_metallic;\nuniform float u_roughness;\nuniform vec3 u_light0Pos;\nuniform vec3 u_light0Color;\nuniform vec3 u_light1Pos;\nuniform vec3 u_light1Color;\nuniform mat4 u_modelMatrix;\nuniform sampler2D u_reflectionCube;\nuniform sampler2D u_reflectionCubeBlur;","base64":"data:text/plain;base64,dW5pZm9ybSB2ZWMzIHVfY29sb3I7CnVuaWZvcm0gZmxvYXQgdV9tZXRhbGxpYzsKdW5pZm9ybSBmbG9hdCB1X3JvdWdobmVzczsKdW5pZm9ybSB2ZWMzIHVfbGlnaHQwUG9zOwp1bmlmb3JtIHZlYzMgdV9saWdodDBDb2xvcjsKdW5pZm9ybSB2ZWMzIHVfbGlnaHQxUG9zOwp1bmlmb3JtIHZlYzMgdV9saWdodDFDb2xvcjsKdW5pZm9ybSBtYXQ0IHVfbW9kZWxNYXRyaXg7CnVuaWZvcm0gc2FtcGxlcjJEIHVfcmVmbGVjdGlvbkN1YmU7CnVuaWZvcm0gc2FtcGxlcjJEIHVfcmVmbGVjdGlvbkN1YmVCbHVyOw=="};
 
-	var vertexShader = {"text":"varying vec3 v_normal;\r\nvarying vec3 v_position;\r\nvarying vec3 v_binormal;\r\nvarying vec3 v_tangent;\r\n","base64":"data:text/plain;base64,dmFyeWluZyB2ZWMzIHZfbm9ybWFsOw0KdmFyeWluZyB2ZWMzIHZfcG9zaXRpb247DQp2YXJ5aW5nIHZlYzMgdl9iaW5vcm1hbDsNCnZhcnlpbmcgdmVjMyB2X3RhbmdlbnQ7DQo="};
+	var vertexShader = {"text":"varying vec3 v_normal;\nvarying vec3 v_position;\nvarying vec3 v_binormal;\nvarying vec3 v_tangent;\n","base64":"data:text/plain;base64,dmFyeWluZyB2ZWMzIHZfbm9ybWFsOwp2YXJ5aW5nIHZlYzMgdl9wb3NpdGlvbjsKdmFyeWluZyB2ZWMzIHZfYmlub3JtYWw7CnZhcnlpbmcgdmVjMyB2X3RhbmdlbnQ7Cg=="};
 
 	// TODO: Replace placeholder shaders by original ones (requires fixing projection matrix)
 	// configs
@@ -3690,7 +3700,9 @@
 	        }
 	        var format = info.formats.find( format => { return format.formatType === 'GLTF' || format.formatType === 'GLTF2'; } );
 	        if ( format !== undefined ) {
-	          return format.root.url
+	          const r = info.presentationParams.orientingRotation;
+	          const quaternion = new THREE.Quaternion(r.x || 0, r.y || 0, r.z || 0, r.w || 1);
+	          return {url: format.root.url, quaternion: quaternion}
 	        } else {
 	          return Promise.reject('Poly asset id:' + id + ' not provided in GLTF or GLTF2 format.')
 	        }
@@ -3750,13 +3762,18 @@
 	}
 
 	// loads google block models (poly.google.com)
-	function loadGblockModel(url, onProgress) {
+	function loadGblockModel(data, onProgress) {
+	  const url = data.url;
+	  const quaternion = data.quaternion;
+	  const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+
 	  return new Promise(function(resolve, reject) {
 
 	    // create unviresal GLTF loader for google blocks
 	    // this one will inherit methods from GLTF V1 or V2 based on file version
 	    function GBlockLoader () {
 	      this.manager = THREE.DefaultLoadingManager;
+	      //this.path = new THREE.LoaderUtils().extractUrlBase( url )
 	      this.path = THREE.Loader.prototype.extractUrlBase( url );
 	    }
 
@@ -3793,9 +3810,11 @@
 	            // parse data
 	            gblockLoader.parse( modifiedData, function onParsingDone (gltf) {
 
+
 	              // FIXME: adapt projection matrix in original shaders and do not replace materials
 	              (gltf.scene || gltf.scenes[0]).traverse(function (child) {
 	                if (child.material) child.material = new THREE.MeshPhongMaterial({ vertexColors: THREE.VertexColors });
+	                if (child.geometry) child.geometry.applyMatrix(matrix);
 	              });
 
 	              // GLTF V1 ready
@@ -3813,7 +3832,13 @@
 	          THREE.GLTFLoader.call(gblockLoader);
 
 	          // parse data
-	          gblockLoader.parse( data, gblockLoader.path, resolve, reject);
+	          //gblockLoader.parse( data, gblockLoader.path, resolve, reject)
+	          gblockLoader.parse( data, gblockLoader.path, function onDone(gltf) {
+	            gltf.scene.traverse(function (child) {
+	              if (child.geometry) child.geometry.applyMatrix(matrix);
+	            });
+	            resolve(gltf);
+	          }, reject);
 
 	        }
 

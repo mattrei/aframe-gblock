@@ -58,3 +58,6 @@ Based on [gltf component](https://aframe.io/docs/0.6.0/components/gltf-model.htm
 ## License
 
 Distributed under an [MIT License](LICENSE).
+
+mat
+c3lXOu8gooq

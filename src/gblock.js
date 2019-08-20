@@ -118,7 +118,9 @@ function getGltfUrl (id, apiKey) {
         }
         var format = info.formats.find( format => { return format.formatType === 'GLTF' || format.formatType === 'GLTF2'; } );
         if ( format !== undefined ) {
-          return format.root.url
+          const r = info.presentationParams.orientingRotation;
+          const quaternion = new THREE.Quaternion(r.x || 0, r.y || 0, r.z || 0, r.w || 1);
+          return {url: format.root.url, quaternion: quaternion}
         } else {
           return Promise.reject('Poly asset id:' + id + ' not provided in GLTF or GLTF2 format.')
         }
@@ -178,13 +180,18 @@ function getGltfUrlFromLegacyApi (src) {
 }
 
 // loads google block models (poly.google.com)
-function loadGblockModel(url, onProgress) {
+function loadGblockModel(data, onProgress) {
+  const url = data.url;
+  const quaternion = data.quaternion;
+  const matrix = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+
   return new Promise(function(resolve, reject) {
 
     // create unviresal GLTF loader for google blocks
     // this one will inherit methods from GLTF V1 or V2 based on file version
     function GBlockLoader () {
       this.manager = THREE.DefaultLoadingManager
+      //this.path = new THREE.LoaderUtils().extractUrlBase( url )
       this.path = THREE.Loader.prototype.extractUrlBase( url )
     }
 
@@ -221,9 +228,11 @@ function loadGblockModel(url, onProgress) {
             // parse data
             gblockLoader.parse( modifiedData, function onParsingDone (gltf) {
 
+
               // FIXME: adapt projection matrix in original shaders and do not replace materials
               (gltf.scene || gltf.scenes[0]).traverse(function (child) {
                 if (child.material) child.material = new THREE.MeshPhongMaterial({ vertexColors: THREE.VertexColors })
+                if (child.geometry) child.geometry.applyMatrix(matrix);
               })
 
               // GLTF V1 ready
@@ -241,7 +250,13 @@ function loadGblockModel(url, onProgress) {
           THREE.GLTFLoader.call(gblockLoader)
 
           // parse data
-          gblockLoader.parse( data, gblockLoader.path, resolve, reject)
+          //gblockLoader.parse( data, gblockLoader.path, resolve, reject)
+          gblockLoader.parse( data, gblockLoader.path, function onDone(gltf) {
+            gltf.scene.traverse(function (child) {
+              if (child.geometry) child.geometry.applyMatrix(matrix);
+            })
+            resolve(gltf);
+          }, reject)
 
         }
 
